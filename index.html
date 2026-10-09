@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestione Coda QR</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; text-align: center; background: #f4f6f8; margin: 0; padding: 20px; color: #333; }
+    .card { background: white; max-width: 400px; margin: 20px auto; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    h1 { font-size: 1.5rem; color: #555; margin-bottom: 5px; }
+    .number { font-size: 5rem; font-weight: bold; color: #2563eb; margin: 10px 0; }
+    .btn { background: #2563eb; color: white; border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 100%; }
+    .btn:active { background: #1d4ed8; }
+    .btn-secondary { background: #64748b; margin-top: 8px; }
+    #qrcode { display: flex; justify-content: center; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+  <!-- VISTA UTENTE (Quando inquadrano il QR Code) -->
+  <div id="user-view" class="card" style="display:none;">
+    <h1>IL TUO NUMERO È</h1>
+    <div id="user-ticket" class="number">--</div>
+    <p>Ora stiamo servendo il numero: <strong id="current-called-user">1</strong></p>
+  </div>
+
+  <!-- VISTA GESTORE (Pannello di controllo) -->
+  <div id="admin-view" class="card">
+    <h1>Numero Attualmente Chiamato</h1>
+    <div id="admin-current" class="number">1</div>
+    <button class="btn" onclick="nextNumber()">Chiama il Prossimo (+1)</button>
+    <button class="btn btn-secondary" onclick="resetQueue()">Azzera Coda</button>
+    <hr style="margin: 25px 0; border: none; border-top: 1px solid #eee;">
+    <p style="font-size: 0.9rem; color: #666;">Fai scansionare questo QR Code ai clienti:</p>
+    <div id="qrcode"></div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const isUser = urlParams.has('ticket');
+
+    // Inizializza i dati salvati nel browser
+    let currentCalled = parseInt(localStorage.getItem('queue_current')) || 1;
+    let lastAssigned = parseInt(localStorage.getItem('queue_last')) || 0;
+
+    if (isUser) {
+      // Modalità Cliente
+      document.getElementById('admin-view').style.display = 'none';
+      document.getElementById('user-view').style.display = 'block';
+      document.getElementById('user-ticket').innerText = urlParams.get('ticket');
+      
+      // Sincronizza il numero chiamato in tempo reale
+      setInterval(() => {
+        document.getElementById('current-called-user').innerText = localStorage.getItem('queue_current') || 1;
+      }, 1000);
+
+    } else {
+      // Modalità Gestore
+      document.getElementById('admin-current').innerText = currentCalled;
+      
+      // Genera il link univoco per il prossimo biglietto
+      const baseUrl = window.location.href.split('?')[0];
+      
+      function generateQR() {
+        let nextTicket = lastAssigned + 1;
+        document.getElementById('qrcode').innerHTML = "";
+        new QRCode(document.getElementById("qrcode"), {
+          text: baseUrl + "?ticket=" + nextTicket,
+          width: 180,
+          height: 180
+        });
+      }
+
+      function nextNumber() {
+        currentCalled++;
+        localStorage.setItem('queue_current', currentCalled);
+        document.getElementById('admin-current').innerText = currentCalled;
+      }
+
+      function resetQueue() {
+        if (confirm("Vuoi azzerare la coda?")) {
+          localStorage.setItem('queue_current', 1);
+          localStorage.setItem('queue_last', 0);
+          location.reload();
+        }
+      }
+
+      // Aggiorna e genera il QR
+      generateQR();
+    }
+  </script>
+</body>
+</html>
